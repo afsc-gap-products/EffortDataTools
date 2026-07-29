@@ -1,0 +1,26 @@
+# EffortDataTools 
+
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/afsc-gap-products/racehauls/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/afsc-gap-products/racehauls/actions)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
+The **`EffortDataTools`** package provides utility functions for fisheries scientists and data managers working with NOAA Fisheries Resource Assessment and Conservation Engineering (RACE) groundfish survey data. 
+
+It streamlines three common workflows:
+1. Extracting filtered **repick haul records** directly from Oracle RACE databases.
+2. Merging and time-trimming **Scientific Computing System (SCS) XML** data streams.
+3. Visualizing **haul tracks** overlaid on survey grid cell maps shaded by depth strata.
+
+---
+
+## Installation
+
+You can install the development version of `racehauls` directly from GitHub using `pak` or `remotes`:
+
+```r
+# install.packages("pak")
+pak::pak("afsc-gap-products/racehauls")
+
+# Or via remotes:
+# remotes::install_github("afsc-gap-products/racehauls")

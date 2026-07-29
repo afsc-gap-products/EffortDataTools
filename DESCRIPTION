@@ -1,0 +1,17 @@
+Package: EffortDataTools
+Type: Package
+Title: Tools for Querying, Processing, and Plotting Haul Data
+Version: 0.1.0
+Authors@R: 
+    person("Sarah", "Friedman", email = "Sarah.Friedman@noaa.gov", role = c("aut", "cre"))
+Description: Utilities for checking effort data in season.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    akgfmaps,
+    dplyr,
+    gapindex,
+    graphics,
+    sf,
+    xml2
+Config/roxygen2/version: 8.0.0
