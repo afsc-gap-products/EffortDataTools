@@ -39,6 +39,4 @@ plot_haul_track(cruise = 202601, vessel = 176, haul = 164, channel = con)
 # Example auto-connecting to Oracle database
 plot_haul_track(cruise = 202601, vessel = 176, haul = 194)
 }
-
-
 }

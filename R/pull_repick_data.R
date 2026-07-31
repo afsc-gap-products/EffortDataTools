@@ -64,7 +64,7 @@ pull_repick_data <- function(cruise, vessel, channel = NULL, output_path = "haul
   )
   
   haul_info <- gapindex::sql_query(channel = channel, query = haul_info_query) 
-  haul_info <- subset(haul_info, select = -c("HAUL_ID", "CRUISE_ID"))
+  haul_info <- subset(haul_info, select = -c(HAUL_ID, CRUISE_ID))
   
   if (nrow(haul_info) == 0) {
     stop(sprintf("No matching haul found for Cruise: %s, Vessel: %s", cruise, vessel))

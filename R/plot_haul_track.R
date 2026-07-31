@@ -23,7 +23,7 @@
 #' @importFrom dplyr filter mutate group_by summarize select distinct arrange 
 #' @importFrom sf st_as_sf st_cast st_crs st_transform st_centroid st_intersects st_geometry st_coordinates st_drop_geometry st_union
 #' @importFrom akgfmaps get_base_layers
-#' @importFrom graphics par plot text legend
+#' @importFrom graphics par plot text legend layout frame
 #'
 #' @examples
 #' \dontrun{
@@ -34,15 +34,17 @@
 #' # Example auto-connecting to Oracle database
 #' plot_haul_track(cruise = 202601, vessel = 176, haul = 194)
 #' }
-#' 
-#' 
 
 plot_haul_track <- function(cruise, vessel, haul, region = "ai", channel = NULL) {
   # Bind dplyr NSE column names to suppress R CMD check notes
   STATION <- STRATUM <- STRATUM_NUM <- STRATUM_RANK <- fill_color <- geometry <- NULL
   
+  # Save graphic parameters and layout matrix to restore on function exit
   old_par <- graphics::par(no.readonly = TRUE)
-  on.exit(graphics::par(old_par), add = TRUE)
+  on.exit({
+    graphics::layout(1)
+    graphics::par(old_par)
+  }, add = TRUE)
   
   if (is.null(channel)) {
     channel <- gapindex::get_connected(check_access = FALSE)
@@ -131,14 +133,18 @@ plot_haul_track <- function(cruise, vessel, haul, region = "ai", channel = NULL)
   )
   centroid_coords <- sf::st_coordinates(grid_centroids)
   
-  graphics::par(mar = c(4, 4, 3, 9))
+  # Set up a 2-column layout: 80% map canvas on left, 20% legend canvas on right
+  graphics::layout(matrix(c(1, 2), nrow = 1), widths = c(0.8, 0.2))
+  
+  # Panel 1: Map Plot
+  graphics::par(mar = c(2, 2, 2, 0.5))
   
   graphics::plot(
     sf::st_geometry(target_grids), 
     col = target_grids$fill_color, 
     border = "grey50", 
     main = paste("Haul", haul),
-    line = -2
+    line = 0.2
   )
   
   graphics::text(
@@ -153,18 +159,21 @@ plot_haul_track <- function(cruise, vessel, haul, region = "ai", channel = NULL)
   graphics::plot(sf::st_geometry(track_proj), add = TRUE, col = "red", lwd = 4)
   graphics::plot(sf::st_geometry(track_midpoint), add = TRUE, col = "black", pch = 19, cex = 1)
   
+  # Panel 2: Legend Plot
+  graphics::par(mar = c(0, 0, 0, 0))
+  graphics::frame()
+  
   graphics::legend(
-    x = "right",
-    inset = c(-0.35, 0),
-    xpd = TRUE,
-    x.intersp = 0.4,
-    y.intersp = 0.9,
+    x = "left",
     legend = paste("Stratum", legend_data$STRATUM_NUM),
     fill = legend_data$fill_color,
     border = rep("grey50", nrow(legend_data)),
     bg = "white",
     box.col = "grey70",
-    cex = 0.8
+    cex = 0.8,
+    x.intersp = 0.5,
+    y.intersp = 0.9,
+    bty = "n"
   )
   
   invisible(list(

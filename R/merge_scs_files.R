@@ -19,7 +19,7 @@
 #'
 #' @export
 #'
-#' @importFrom xml2 read_xml write_xml xml_attr xml_attr<- xml_find_first xml_find_all xml_add_child xml_remove
+#' @importFrom xml2 read_xml write_xml xml_attr xml_attr<- xml_find_first xml_find_all xml_add_child xml_remove xml_attrs xml_text xml_name
 #'
 #' @examples
 #' \dontrun{
@@ -130,17 +130,51 @@ merge_scs_files <- function(file_paths,
         }
       }
     }
-    message(sprintf("Trimmed %d records outside designated time frame.", trimmed_count))
   }
   
-  # 5. Set root timestamps (converting local input back to ISO UTC string if provided)
+  # 5. Deduplicate records across EventData
+  dedupe_container <- function(container_xpath, child_xpath) {
+    container <- xml2::xml_find_first(base_xml, container_xpath)
+    if (length(container) == 0) return(0)
+    
+    children <- xml2::xml_find_all(container, child_xpath)
+    if (length(children) <= 1) return(0)
+    
+    seen_keys <- character(0)
+    removed_count <- 0
+    
+    for (child in children) {
+      attrs <- xml2::xml_attrs(child)
+      text_content <- xml2::xml_text(child)
+      tag_name <- xml2::xml_name(child)
+      
+      attr_string <- paste(names(attrs), attrs, collapse = "|", sep = "=")
+      key <- paste(tag_name, attr_string, text_content, sep = "::")
+      
+      if (key %in% seen_keys) {
+        xml2::xml_remove(child)
+        removed_count <- removed_count + 1
+      } else {
+        seen_keys <- c(seen_keys, key)
+      }
+    }
+    return(removed_count)
+  }
+  
+  dupes_triggers    <- dedupe_container("/EventResult/EventData/Triggers", "./Trigger")
+  dupes_diagnostics <- dedupe_container("/EventResult/EventData/DiagnosticsLog", "./DiagnosticsLogEntry")
+  dupes_metaitems   <- dedupe_container("/EventResult/EventData/MetaItems", "./MetaItem")
+  dupes_outputs     <- dedupe_container("/EventResult/EventData/Outputs", "./*")
+
+  
+  # 6. Set root timestamps (converting local input back to ISO UTC string if provided)
   final_start <- if (!is.null(start_ct)) format_utc_iso(start_ct) else overall_start
   final_end   <- if (!is.null(end_ct)) format_utc_iso(end_ct) else overall_end
   
   if (!is.null(final_start)) xml2::xml_attr(base_xml, "event-start-time") <- final_start
   if (!is.null(final_end))   xml2::xml_attr(base_xml, "event-end-time")   <- final_end
   
-  # 6. Save output
+  # 7. Save output
   xml2::write_xml(base_xml, output_path)
   message(sprintf("Successfully merged %d files into '%s'.", length(file_paths), output_path))
   

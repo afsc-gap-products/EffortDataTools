@@ -1,10 +1,12 @@
 Package: EffortDataTools
 Type: Package
-Title: Tools for Querying, Processing, and Plotting Haul Data
-Version: 0.1.0
+Title: Tools for Querying, Processing, and Plotting RACE Effort Data
+Version: 0.2.0
 Authors@R: 
-    person("Sarah", "Friedman", email = "Sarah.Friedman@noaa.gov", role = c("aut", "cre"))
-Description: Utilities for checking effort data in season.
+    person("Sarah", "Friedman", email = "sarah.friedman@noaa.gov", role = c("aut", "cre"))
+Description: Utilities for extracting repick haul data from Oracle RACE databases, 
+    merging Scientific Computing System (SCS) XML records, validating haul depth 
+    and operational protocols, and visualizing haul tracks over station grid layers.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
@@ -13,5 +15,6 @@ Imports:
     gapindex,
     graphics,
     sf,
+    utils,
     xml2
 Config/roxygen2/version: 8.0.0
