@@ -13,7 +13,7 @@
 #' @export
 #'
 #' @importFrom gapindex get_connected sql_query
-#' @importFrom dplyr filter select arrange contains pick
+#' @importFrom dplyr filter select arrange contains
 #'
 #' @examples
 #' \dontrun{
@@ -24,6 +24,21 @@ check_haul_depths <- function(cruise, region, channel = NULL) {
   gear_depth <- bottom_depth <- haul_id <- station <- NULL
   performance <- vessel_id <- haul <- NULL
   
+  # Map region codes to survey definition IDs
+  survey_def_map <- list(
+    "AI"  = c(52),
+    "GOA" = c(39, 47),
+    "EBS" = c(98),
+    "BSS" = c(78),
+    "NBS" = c(143)
+  )
+  
+  reg_upper <- toupper(region)
+  if (!reg_upper %in% names(survey_def_map)) {
+    stop(sprintf("Invalid region '%s'. Must be one of: %s", region, paste(names(survey_def_map), collapse = ", ")))
+  }
+  target_def_ids <- survey_def_map[[reg_upper]]
+  
   if (is.null(channel)) {
     channel <- gapindex::get_connected(check_access = FALSE)
   }
@@ -32,7 +47,7 @@ check_haul_depths <- function(cruise, region, channel = NULL) {
     SELECT 
       h.HAUL_ID,
       c.CRUISE,
-      '%s' AS REGION,
+      c.REGION,
       c.VESSEL_ID,
       h.HAUL,
       h.STATION,
@@ -40,16 +55,17 @@ check_haul_depths <- function(cruise, region, channel = NULL) {
       h.EDIT_GEAR_DEPTH AS GEAR_DEPTH,
       h.EDIT_BOTTOM_DEPTH AS BOTTOM_DEPTH
     FROM RACE_DATA.EDIT_HAULS h
-    JOIN RACE_DATA.CRUISES c ON h.CRUISE_ID = c.CRUISE_ID
+    JOIN RACE_DATA.V_CRUISES c ON h.CRUISE_ID = c.CRUISE_ID
     WHERE c.CRUISE = %s
-  ", toupper(region), cruise)
+      AND c.SURVEY_DEFINITION_ID IN (%s)
+  ", cruise, paste(target_def_ids, collapse = ","))
   
   haul_data <- gapindex::sql_query(channel = channel, query = query)
-  names(haul_data) <- tolower(names(haul_data))
   
-  if (nrow(haul_data) == 0) {
+  if (!is.data.frame(haul_data) || nrow(haul_data) == 0) {
     stop(sprintf("No records found for Cruise: %s in Region: %s", cruise, region))
   }
+  names(haul_data) <- tolower(names(haul_data))
   
   haul_data |>
     dplyr::filter(
@@ -59,7 +75,7 @@ check_haul_depths <- function(cruise, region, channel = NULL) {
     ) |>
     dplyr::select(
       haul_id, 
-      dplyr::pick(cruise:station), 
+      cruise:station, 
       performance, 
       dplyr::contains("depth")
     ) |>
@@ -95,16 +111,31 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
   duration <- station <- stratum <- n_station <- accessories <- NULL
   gear <- haul_type <- performance <- issue <- NULL
   
+  # Map region codes to survey definition IDs
+  survey_def_map <- list(
+    "AI"  = c(52),
+    "GOA" = c(39, 47),
+    "EBS" = c(98),
+    "BSS" = c(78),
+    "NBS" = c(143)
+  )
+  
+  reg_upper <- toupper(region)
+  if (!reg_upper %in% names(survey_def_map)) {
+    stop(sprintf("Invalid region '%s'. Must be one of: %s", region, paste(names(survey_def_map), collapse = ", ")))
+  }
+  target_def_ids <- survey_def_map[[reg_upper]]
+  
   if (is.null(channel)) {
     channel <- gapindex::get_connected(check_access = FALSE)
   }
   
-  # Query 1: Extract haul information and event measurements directly
+  # Query 1: Extract haul information filtered by CRUISE and SURVEY_DEFINITION_ID
   haul_query <- sprintf("
     SELECT 
       h.HAUL_ID,
       c.CRUISE,
-      '%s' AS REGION,
+      c.REGION,
       c.VESSEL_ID,
       h.HAUL,
       h.STATION,
@@ -115,17 +146,21 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
       h.GEAR,
       (m.EDIT_DURATION_OB_FB * 60) AS DURATION
     FROM RACE_DATA.EDIT_HAULS h
-    JOIN RACE_DATA.CRUISES c ON h.CRUISE_ID = c.CRUISE_ID
+    JOIN RACE_DATA.V_CRUISES c ON h.CRUISE_ID = c.CRUISE_ID
     LEFT JOIN RACE_DATA.EDIT_HAUL_MEASUREMENTS m ON h.HAUL_ID = m.HAUL_ID
     WHERE c.CRUISE = %s
-  ", toupper(region), cruise)
+      AND c.SURVEY_DEFINITION_ID IN (%s)
+  ", cruise, paste(target_def_ids, collapse = ","))
   
   new_haul <- gapindex::sql_query(channel = channel, query = haul_query)
+  
+  if (!is.data.frame(new_haul) || nrow(new_haul) == 0) {
+    stop(sprintf("No haul records found in edit tables for Cruise: %s in Region: %s", cruise, region))
+  }
   names(new_haul) <- tolower(names(new_haul))
   
-  if (nrow(new_haul) == 0) {
-    stop(sprintf("No haul records found in edit tables for Cruise: %s", cruise))
-  }
+  # Clean valid haul_ids for SQL query
+  valid_haul_ids <- stats::na.omit(unique(new_haul$haul_id))
   
   # Query 2: Extract catch species totals
   catch_query <- sprintf("
@@ -135,23 +170,39 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
       cs.TOTAL_WEIGHT_IN_HAUL AS TOTAL_WEIGHT
     FROM RACE_DATA.EDIT_CATCH_SPECIES cs
     WHERE cs.HAUL_ID IN (%s)
-  ", paste(unique(new_haul$haul_id), collapse = ","))
+  ", paste(valid_haul_ids, collapse = ","))
   
   new_catch <- gapindex::sql_query(channel = channel, query = catch_query)
-  names(new_catch) <- tolower(names(new_catch))
   
-  # Evaluate issues
-  new_catch |>
-    dplyr::group_by(haul_id) |>
-    dplyr::mutate(haul_weight_t = round(sum(total_weight, na.rm = TRUE) / 1000, 1)) |>
-    dplyr::right_join(new_haul, by = dplyr::join_by(haul_id)) |>
-    dplyr::ungroup() |>
+  # Calculate total haul weight per haul_id directly
+  if (is.data.frame(new_catch) && nrow(new_catch) > 0) {
+    names(new_catch) <- tolower(names(new_catch))
+    
+    catch_summary <- new_catch |>
+      dplyr::group_by(haul_id) |>
+      dplyr::summarize(
+        haul_weight_t = round(sum(total_weight, na.rm = TRUE) / 1000, 1),
+        .groups = "drop"
+      )
+  } else {
+    catch_summary <- data.frame(
+      haul_id = numeric(0),
+      haul_weight_t = numeric(0)
+    )
+  }
+  
+  # Join catch weight back to hauls and evaluate operational issues
+  new_haul |>
+    dplyr::left_join(catch_summary, by = dplyr::join_by(haul_id)) |>
+    dplyr::mutate(
+      haul_weight_t = ifelse(is.na(haul_weight_t), 0, haul_weight_t)
+    ) |>
     dplyr::select(cruise, region, vessel_id, haul:duration, haul_weight_t) |>
     unique() |>
     dplyr::group_by(cruise, region, station, stratum) |>
     dplyr::add_count(name = "n_station") |> 
     dplyr::mutate(issue = dplyr::case_when(
-      !accessories %in% c(15, 129) ~ "improper accessories",
+      !accessories %in% c(15, 130) ~ "improper accessories",
       !gear %in% c(44, 172) ~ "improper gear",
       haul_type != 3 ~ "haul type not 3",
       performance < 0 ~ "performance inadequate",
