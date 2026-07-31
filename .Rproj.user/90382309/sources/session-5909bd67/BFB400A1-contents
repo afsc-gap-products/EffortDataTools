@@ -1,0 +1,16 @@
+scs_files <- list.files("C:/Users/sarah.friedman/Downloads/June22SCSfiles/Relevant SCS/", pattern = "Event Data", full.names = T)
+
+merge_scs_files(
+  file_paths = scs_files,
+  output_path = "C:/Users/sarah.friedman/Downloads/June22SCSfiles/Relevant SCS/Haul0073.xml",
+  start_time  = "2026-06-22 12:34:00", # Alaska Daylight Time
+  end_time    = "2026-06-22 13:46:00"  # Alaska Daylight Time
+)
+
+
+
+plot_haul_track(cruise = 202601, vessel = 176, haul = 214, channel = channel)
+plot_haul_track(cruise = 202601, vessel = 148, haul = 163, channel = channel)
+plot_haul_track(cruise = 202601, vessel = 148, haul = 164, channel = channel)
+
+
