@@ -144,7 +144,7 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
       h.PERFORMANCE,
       h.ACCESSORIES,
       h.GEAR,
-      (m.EDIT_DURATION_OB_FB * 60) AS DURATION
+      ROUND(m.EDIT_DURATION_OB_FB * 60, 2) AS DURATION
     FROM RACE_DATA.EDIT_HAULS h
     JOIN RACE_DATA.V_CRUISES c ON h.CRUISE_ID = c.CRUISE_ID
     LEFT JOIN RACE_DATA.EDIT_HAUL_MEASUREMENTS m ON h.HAUL_ID = m.HAUL_ID
@@ -165,11 +165,13 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
   # Query 2: Extract catch species totals
   catch_query <- sprintf("
     SELECT 
-      cs.HAUL_ID,
+      c.HAUL_ID,
       cs.SPECIES_CODE,
       cs.TOTAL_WEIGHT_IN_HAUL AS TOTAL_WEIGHT
     FROM RACE_DATA.EDIT_CATCH_SPECIES cs
-    WHERE cs.HAUL_ID IN (%s)
+    JOIN RACE_DATA.EDIT_CATCH_SAMPLES c 
+      ON cs.CATCH_SAMPLE_ID = c.CATCH_SAMPLE_ID
+    WHERE c.HAUL_ID IN (%s)
   ", paste(valid_haul_ids, collapse = ","))
   
   new_catch <- gapindex::sql_query(channel = channel, query = catch_query)
