@@ -4,10 +4,8 @@ Title: Tools for Querying, Processing, and Plotting RACE Effort Data
 Version: 0.2.0
 Authors@R: 
     person("Sarah", "Friedman", email = "sarah.friedman@noaa.gov", role = c("aut", "cre"))
-Description: Utilities for extracting repick haul data from Oracle RACE databases, 
-    merging Scientific Computing System (SCS) XML records, validating haul depth 
-    and operational protocols, and visualizing haul tracks over station grid layers.
-License: MIT + file LICENSE
+Description: Utilities for checking effort data in season.
+License: LICENSE.md
 Encoding: UTF-8
 Imports:
     akgfmaps,
@@ -17,4 +15,11 @@ Imports:
     sf,
     utils,
     xml2
+Remotes: 
+    afsc-gap-products/akgfmaps,
+    afsc-gap-products/gapindex
 Config/roxygen2/version: 8.0.0
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
