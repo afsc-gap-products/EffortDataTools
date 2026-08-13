@@ -236,7 +236,7 @@ find_duplicate_timestamps <- function(cruise, vessel_id, haul, channel = NULL) {
   if (is.null(channel)) {
     channel <- gapindex::get_connected(check_access = FALSE)
   }
-  
+
   # SQL query to find duplicate timestamps with different GPS coords.
   duplicate_query <- paste0("
     select *
@@ -269,8 +269,12 @@ find_duplicate_timestamps <- function(cruise, vessel_id, haul, channel = NULL) {
     where record_count > 1
     order by edit_date_time
   ")
-  
+
   result <- gapindex::sql_query(channel = channel, query = duplicate_query)
-  
+
+  if (nrow(result) == 0) {
+    message("No duplicate timestamps found for this cruise/vessel/haul.")
+  }
+
   return(result)
 }
