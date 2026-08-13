@@ -224,7 +224,7 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
 #' @param haul haul number
 #' @param channel ODBC channel, established by setting channel = gapindex::get_connected()
 #' @details
-#' When the GPS coordinates are recorded very frequently, you can occasionally get multiple GPS coordinate points for the same hh:mm:ss timestamp. This causes an error in GIDES. You can use this function to identify the duplicate records and use the POSITION_ID of those duplicates in the "Position Data" section of GIDES to change their Datum Code Description in GIDES to 2 ("DUPLICATE DATE_TIME, DIFFERENT VALUE(S) (Use N)").
+#' When the GPS coordinates are recorded very frequently, you can occasionally get multiple GPS coordinate points for the same hh:mm:ss timestamp. This causes an error in GIDES (edit check ID 843; 'x child records have dpulicate header and date-time values...'). You can use this function to identify the duplicate records and use the POSITION_ID of those duplicates in the "Position Data" section of GIDES to change their Datum Code Description in GIDES to 2 ("DUPLICATE DATE_TIME, DIFFERENT VALUE(S) (Use N)"). This function may become obsolete in the future if/when the OFIS folks change the position recording frequency to something closer to 1 sec. 
 #' 
 #'
 #' @returns a dataframe containing duplicated GPS points for the same timestamp.
