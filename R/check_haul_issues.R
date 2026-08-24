@@ -216,3 +216,65 @@ check_haul_abundance <- function(cruise, region, channel = NULL) {
     dplyr::filter(issue != "none") |>
     dplyr::arrange(region, cruise, vessel_id, haul)
 }
+
+#' Find GPS coordinates with duplicate timestamps 
+#'
+#' @param cruise cruise id, e.g., 202601
+#' @param vessel_id vessel code (OEX = 148, AKP = 176)
+#' @param haul haul number
+#' @param channel ODBC channel, established by setting channel = gapindex::get_connected()
+#' @details
+#' When the GPS coordinates are recorded very frequently, you can occasionally get multiple GPS coordinate points for the same hh:mm:ss timestamp. This causes an error in GIDES (edit check ID 843; 'x child records have dpulicate header and date-time values...'). You can use this function to identify the duplicate records and use the POSITION_ID of those duplicates in the "Position Data" section of GIDES to change their Datum Code Description in GIDES to 2 ("DUPLICATE DATE_TIME, DIFFERENT VALUE(S) (Use N)"). This function may become obsolete in the future if/when the OFIS folks change the position recording frequency to something closer to 1 sec. 
+#' 
+#'
+#' @returns a dataframe containing duplicated GPS points for the same timestamp.
+#' @export
+#'
+#' @examples
+#' find_duplicate_timestamps(cruise = 202601,vessel_id = 176, haul = 121, channel = channel)
+find_duplicate_timestamps <- function(cruise, vessel_id, haul, channel = NULL) {
+  if (is.null(channel)) {
+    channel <- gapindex::get_connected(check_access = FALSE)
+  }
+
+  # SQL query to find duplicate timestamps with different GPS coords.
+  duplicate_query <- paste0("
+    select *
+    from (
+        select
+            c.*,
+            a.haul_id as haul_id_from_hauls,
+            a.haul as haul_number,
+            count(*) over (partition by c.edit_date_time) as record_count
+        from race_data.edit_hauls a,
+             race_data.edit_position_headers b,
+             race_data.edit_positions c,
+             race_data.edit_events g,
+             race_data.edit_events h
+        where a.cruise_id = (
+            select cruise_id
+            from race_data.cruises
+            where vessel_id = ", vessel_id, "
+              and cruise = ", cruise, "
+        )
+        and a.haul = ", haul, "
+        and a.haul_id = b.haul_id
+        and a.haul_id = g.haul_id
+        and a.haul_id = h.haul_id
+        and g.event_type_id = 15
+        and h.event_type_id = 16
+        and b.position_header_id = c.position_header_id
+        and c.edit_date_time between g.edit_date_time and h.edit_date_time
+    )
+    where record_count > 1
+    order by edit_date_time
+  ")
+
+  result <- gapindex::sql_query(channel = channel, query = duplicate_query)
+
+  if (nrow(result) == 0) {
+    message("No duplicate timestamps found for this cruise/vessel/haul.")
+  }
+
+  return(result)
+}
